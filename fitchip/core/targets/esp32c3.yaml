@@ -1,0 +1,9 @@
+id: esp32c3
+display_name: "ESP32-C3"
+vendor: espressif
+isa: riscv32
+ram_kb: 400
+flash_kb: 4096
+has_os: false
+accelerators: []
+toolchains: [esp-idf, platformio]

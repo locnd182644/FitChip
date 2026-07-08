@@ -1,0 +1,121 @@
+# Operator support table for TensorFlow Lite Micro.
+#
+# key      = TFLite builtin operator name (as reported by the Model Inspector)
+# resolver = MicroMutableOpResolver method (resolver.Add<resolver>() is
+#            emitted in the generated main.cc)
+# esp_nn   = true when esp-nn provides an optimized INT8 kernel for it
+# subst    = suggested substitution shown when the op is NOT in this table
+#
+# This file is data, not code: sync it with new TFLM releases without
+# touching the adapter. Source of truth:
+# tflite-micro/tensorflow/lite/micro/micro_mutable_op_resolver.h
+
+ops:
+  ABS: {resolver: Abs}
+  ADD: {resolver: Add, esp_nn: true}
+  ADD_N: {resolver: AddN}
+  ARG_MAX: {resolver: ArgMax}
+  ARG_MIN: {resolver: ArgMin}
+  ASSIGN_VARIABLE: {resolver: AssignVariable}
+  AVERAGE_POOL_2D: {resolver: AveragePool2D, esp_nn: true}
+  BATCH_TO_SPACE_ND: {resolver: BatchToSpaceNd}
+  BROADCAST_ARGS: {resolver: BroadcastArgs}
+  BROADCAST_TO: {resolver: BroadcastTo}
+  CALL_ONCE: {resolver: CallOnce}
+  CAST: {resolver: Cast}
+  CEIL: {resolver: Ceil}
+  CONCATENATION: {resolver: Concatenation}
+  CONV_2D: {resolver: Conv2D, esp_nn: true}
+  COS: {resolver: Cos}
+  CUMSUM: {resolver: CumSum}
+  DEPTH_TO_SPACE: {resolver: DepthToSpace}
+  DEPTHWISE_CONV_2D: {resolver: DepthwiseConv2D, esp_nn: true}
+  DEQUANTIZE: {resolver: Dequantize}
+  DIV: {resolver: Div}
+  ELU: {resolver: Elu}
+  EQUAL: {resolver: Equal}
+  EXP: {resolver: Exp}
+  EXPAND_DIMS: {resolver: ExpandDims}
+  FILL: {resolver: Fill}
+  FLOOR: {resolver: Floor}
+  FLOOR_DIV: {resolver: FloorDiv}
+  FLOOR_MOD: {resolver: FloorMod}
+  FULLY_CONNECTED: {resolver: FullyConnected, esp_nn: true}
+  GATHER: {resolver: Gather}
+  GATHER_ND: {resolver: GatherNd}
+  GREATER: {resolver: Greater}
+  GREATER_EQUAL: {resolver: GreaterEqual}
+  HARD_SWISH: {resolver: HardSwish}
+  IF: {resolver: If}
+  L2_NORMALIZATION: {resolver: L2Normalization}
+  L2_POOL_2D: {resolver: L2Pool2D}
+  LEAKY_RELU: {resolver: LeakyRelu}
+  LESS: {resolver: Less}
+  LESS_EQUAL: {resolver: LessEqual}
+  LOG: {resolver: Log}
+  LOGICAL_AND: {resolver: LogicalAnd}
+  LOGICAL_NOT: {resolver: LogicalNot}
+  LOGICAL_OR: {resolver: LogicalOr}
+  LOGISTIC: {resolver: Logistic}
+  LOG_SOFTMAX: {resolver: LogSoftmax}
+  MAXIMUM: {resolver: Maximum}
+  MAX_POOL_2D: {resolver: MaxPool2D, esp_nn: true}
+  MEAN: {resolver: Mean}
+  MINIMUM: {resolver: Minimum}
+  MIRROR_PAD: {resolver: MirrorPad}
+  MUL: {resolver: Mul, esp_nn: true}
+  NEG: {resolver: Neg}
+  NOT_EQUAL: {resolver: NotEqual}
+  PACK: {resolver: Pack}
+  PAD: {resolver: Pad}
+  PADV2: {resolver: PadV2}
+  PRELU: {resolver: Prelu, esp_nn: true}
+  QUANTIZE: {resolver: Quantize}
+  READ_VARIABLE: {resolver: ReadVariable}
+  REDUCE_MAX: {resolver: ReduceMax}
+  RELU: {resolver: Relu, esp_nn: true}
+  RELU6: {resolver: Relu6, esp_nn: true}
+  RESHAPE: {resolver: Reshape}
+  RESIZE_BILINEAR: {resolver: ResizeBilinear}
+  RESIZE_NEAREST_NEIGHBOR: {resolver: ResizeNearestNeighbor}
+  ROUND: {resolver: Round}
+  RSQRT: {resolver: Rsqrt}
+  SELECT_V2: {resolver: SelectV2}
+  SHAPE: {resolver: Shape}
+  SIN: {resolver: Sin}
+  SLICE: {resolver: Slice}
+  SOFTMAX: {resolver: Softmax, esp_nn: true}
+  SPACE_TO_BATCH_ND: {resolver: SpaceToBatchNd}
+  SPACE_TO_DEPTH: {resolver: SpaceToDepth}
+  SPLIT: {resolver: Split}
+  SPLIT_V: {resolver: SplitV}
+  SQRT: {resolver: Sqrt}
+  SQUARE: {resolver: Square}
+  SQUARED_DIFFERENCE: {resolver: SquaredDifference}
+  SQUEEZE: {resolver: Squeeze}
+  STRIDED_SLICE: {resolver: StridedSlice}
+  SUB: {resolver: Sub}
+  SUM: {resolver: Sum}
+  SVDF: {resolver: Svdf}
+  TANH: {resolver: Tanh}
+  TRANSPOSE: {resolver: Transpose}
+  TRANSPOSE_CONV: {resolver: TransposeConv}
+  UNIDIRECTIONAL_SEQUENCE_LSTM: {resolver: UnidirectionalSequenceLSTM}
+  UNPACK: {resolver: Unpack}
+  VAR_HANDLE: {resolver: VarHandle}
+  WHILE: {resolver: While}
+  ZEROS_LIKE: {resolver: ZerosLike}
+
+# Custom ops shipped with TFLM itself (recognized by their custom-op name).
+custom_ops:
+  CIRCULAR_BUFFER: {resolver: CircularBuffer}
+  TFLite_Detection_PostProcess: {resolver: DetectionPostprocess}
+  ETHOSU: {resolver: EthosU}
+
+# Suggested substitutions for common unsupported ops.
+substitutions:
+  LSTM: "Use UNIDIRECTIONAL_SEQUENCE_LSTM, or unroll the LSTM at export time."
+  BIDIRECTIONAL_SEQUENCE_LSTM: "Split into two UNIDIRECTIONAL_SEQUENCE_LSTM passes."
+  GELU: "Approximate with TANH-based ops at export time (most exporters have a flag)."
+  LOCAL_RESPONSE_NORMALIZATION: "Replace with BatchNorm folded at export."
+  FLEX: "Flex/Select-TF ops are not available on MCUs — re-export with TFLITE_BUILTINS only."

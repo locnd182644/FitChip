@@ -1,0 +1,10 @@
+id: esp32s3
+display_name: "ESP32-S3"
+vendor: espressif
+isa: xtensa-lx7
+ram_kb: 512
+psram_kb: 8192
+flash_kb: 8192
+has_os: false
+accelerators: [esp-nn-simd]
+toolchains: [esp-idf, platformio]

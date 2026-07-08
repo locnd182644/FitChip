@@ -1,0 +1,90 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fitchip"
+version = "0.1.0"
+description = "Turn a trained ML model into a ready-to-flash C/C++ firmware project — in one command."
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.10"
+authors = [{ name = "FitChip contributors" }]
+keywords = ["tinyml", "esp32", "tflite-micro", "edge-ai", "embedded", "compiler"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Embedded Systems",
+]
+
+# Core stays light: parsing, compatibility check, memory estimate and project
+# generation must work without TensorFlow. Heavy tooling lives in extras.
+dependencies = [
+    "click>=8.1",
+    "pyyaml>=6.0",
+    "jinja2>=3.1",
+    "flatbuffers>=23.5",
+    "tflite>=2.10",          # generated flatbuffers schema bindings for .tflite parsing
+    "onnx>=1.14",
+]
+
+[project.optional-dependencies]
+# INT8 post-training quantization + onnx -> tflite conversion.
+quantize = [
+    "tensorflow>=2.15",
+    "tf-keras",
+    "onnx2tf>=1.19",
+    "numpy>=1.24",
+    "onnx-graphsurgeon>=0.3",
+    "sng4onnx>=1.0",
+    "onnxsim>=0.4",
+    "ai-edge-litert>=1.0",
+]
+# Orchestrator (FastAPI). Celery/Redis arrive in wave 2 together with the TVM backend.
+server = [
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
+    "python-multipart>=0.0.9",
+]
+# Streamlit GUI (MVP web front-end).
+web = [
+    "streamlit>=1.32",
+    "requests>=2.31",
+]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=4.1",
+    "ruff>=0.4",
+]
+
+[project.scripts]
+fitchip = "fitchip.cli.main:cli"
+
+# Backends self-register through entry points: the core never imports an
+# adapter by name. A third-party backend ships its own package with the same
+# entry-point group and shows up automatically.
+[project.entry-points."fitchip.backends"]
+tflm = "fitchip.backends.tflm.adapter:TflmBackend"
+
+[project.urls]
+Homepage = "https://github.com/fitchip-dev/fitchip"
+Documentation = "https://docs.fitchip.dev"
+
+[tool.setuptools.packages.find]
+include = ["fitchip*"]
+
+[tool.setuptools.package-data]
+"fitchip.core.targets" = ["*.yaml"]
+"fitchip.backends.tflm" = ["*.yaml", "templates/*", "templates/**/*"]
+"fitchip.samples" = ["*.yaml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

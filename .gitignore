@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+
+# Tooling
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# FitChip output
+out/
+
+# Models (samples are pulled, not committed)
+*.tflite
+*.onnx
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store

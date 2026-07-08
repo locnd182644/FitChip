@@ -1,0 +1,9 @@
+id: esp32
+display_name: "ESP32"
+vendor: espressif
+isa: xtensa-lx6
+ram_kb: 320          # usable DRAM out of 520 KB SRAM total
+flash_kb: 4096
+has_os: false
+accelerators: [esp-nn]
+toolchains: [esp-idf, platformio]

@@ -1,0 +1,12 @@
+id: tflm
+display_name: "TensorFlow Lite Micro (+ esp-nn)"
+docker_image: fitchip/backend-tflm:0.1   # unused in MVP — compile runs in-process
+input_formats: [tflite]
+convertible_from: [onnx]                # via the onnx2tf converter edge
+output_artifacts: [c_source_project]
+targets:
+  - match: {has_os: false}              # any bare-metal target
+quantization: [int8_full, none]
+ops_supported_file: ops_tflm.yaml       # op table — updated independently of code
+priority: 100                           # preferred on MCUs (most stable backend)
+timeout_s: 300

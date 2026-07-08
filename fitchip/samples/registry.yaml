@@ -1,0 +1,13 @@
+# Verified sample models. Each entry is a small, redistributable (Apache-2.0)
+# model known to compile and run on the MVP targets.
+samples:
+  micro-speech:
+    filename: micro-speech.tflite
+    description: "Keyword spotting (yes/no), INT8, ~20 KB — the classic TFLM demo"
+    url: https://github.com/tensorflow/tflite-micro/raw/main/tensorflow/lite/micro/examples/micro_speech/models/micro_speech_quantized.tflite
+    license: Apache-2.0
+  person-detect:
+    filename: person-detect.tflite
+    description: "Person detection, 96x96 grayscale, INT8, ~300 KB"
+    url: https://github.com/tensorflow/tflite-micro/raw/main/tensorflow/lite/micro/models/person_detect.tflite
+    license: Apache-2.0
