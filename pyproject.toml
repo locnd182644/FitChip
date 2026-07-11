@@ -71,7 +71,7 @@ fitchip = "fitchip.cli.main:cli"
 tflm = "fitchip.backends.tflm.adapter:TflmBackend"
 
 [project.urls]
-Homepage = "https://github.com/fitchip-dev/fitchip"
+Homepage = "https://github.com/locnd182644/fitchip"
 Documentation = "https://docs.fitchip.dev"
 
 [tool.setuptools.packages.find]

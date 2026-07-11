@@ -1,25 +1,19 @@
 <div align="center">
 
-<img src="docs/assets/logo.png" alt="FitChip logo" width="120"/>
+<img src="docs/assets/logo.png" alt="FitChip logo" width="500"/>
 
-# FitChip
+---
 
-**Make your model fit your chip.**
-
-*Not another machine learning compiler — the orchestrator that makes the existing ones usable — in one command.*
+*FitChip is an **Orchestrator, not another ML compiler**. Its core design goal:
+any ML compiler (TVM, ONNX Runtime, TensorRT, ExecuTorch…) and any target
+(ESP32, STM32, Jetson, x86…) can be plugged in later **without touching the
+core**.*
 
 No Python expertise. No tensor wizardry. No vendor lock-in.
 
-[![CI](https://img.shields.io/github/actions/workflow/status/fitchip-dev/fitchip/ci.yml?branch=main&label=CI)](https://github.com/fitchip-dev/fitchip/actions)
-[![PyPI](https://img.shields.io/pypi/v/fitchip)](https://pypi.org/project/fitchip/)
-[![Python](https://img.shields.io/pypi/pyversions/fitchip)](https://pypi.org/project/fitchip/)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
-[![Discord](https://img.shields.io/discord/000000000000?label=Discord&logo=discord)](https://discord.gg/fitchip)
-[![Downloads](https://img.shields.io/pypi/dm/fitchip)](https://pypi.org/project/fitchip/)
 
-<img src="docs/assets/demo.gif" alt="FitChip demo: model.tflite compiled to a running ESP32 project in under a minute" width="720"/>
-
-[Quick Start](#-quick-start) · [How It Works](#-how-it-works) · [Supported Hardware](#-supported-hardware--backends) · [Docs](https://docs.fitchip.dev) · [Discord](https://discord.gg/fitchip) · [Roadmap](#️-roadmap)
+[Quick Start](#-quick-start) · [How It Works](#-how-it-works) · [Supported Hardware](#-supported-hardware--backends) · [Roadmap](#️-roadmap)
 
 </div>
 
@@ -183,8 +177,6 @@ Design details live in [`docs/architecture.md`](docs/architecture.md). If you wa
 
 📋 **[Full operator compatibility table →](docs/op-support.md)** — which ops run on which target, verified on real hardware by the community. Tested a board we haven't? [PRs welcome](CONTRIBUTING.md).
 
-🧠 **[Verified model zoo →](https://github.com/fitchip-dev/awesome-esp32-models)** — models with measured RAM/flash/latency numbers on real boards.
-
 ## 🔒 Security Model
 
 FitChip is built for people who are (rightly) paranoid about third parties touching their models and firmware:
@@ -222,9 +214,9 @@ one has real users — maintenance cost is forever. Vote to move these up:
 
 **🧐 Exploring** — an LLM deployment lane: GGUF quantization + "will it fit my
 RAM?" estimation for Jetson / Raspberry Pi 5. No commitment yet — if you'd embed
-an LLM into a C/C++ product, [tell us your use case](https://github.com/fitchip-dev/fitchip/discussions).
+an LLM into a C/C++ product, [tell us your use case](https://github.com/locnd182644/fitchip/discussions).
 
-Vote on features and see full discussion in [GitHub Discussions](https://github.com/fitchip-dev/fitchip/discussions) · progress board on [GitHub Projects](https://github.com/fitchip-dev/fitchip/projects).
+Vote on features and see full discussion in [GitHub Discussions](https://github.com/locnd182644/fitchip/discussions) · progress board on [GitHub Projects](https://github.com/locnd182644/fitchip/projects).
 
 ## 💎 Open Source vs. FitChip Cloud
 
@@ -259,14 +251,11 @@ The fastest ways to help, in order of impact:
 3. **Write a backend adapter** for a compiler you know well. [Guide](docs/writing-a-backend.md).
 4. **Report broken models.** A failing `.onnx`/`.tflite` (that you're allowed to share) is a gift.
 
-Start with [`CONTRIBUTING.md`](CONTRIBUTING.md) and the [`good first issue`](https://github.com/fitchip-dev/fitchip/labels/good%20first%20issue) label. All contributors are credited in release notes.
+Start with [`CONTRIBUTING.md`](CONTRIBUTING.md) and the [`good first issue`](https://github.com/locnd182644/fitchip/labels/good%20first%20issue) label. All contributors are credited in release notes.
 
 ## 💬 Community
 
-- 💬 [Discord](https://discord.gg/fitchip) — help, showcase your builds in `#showcase`, talk shop
-- 🗣️ [GitHub Discussions](https://github.com/fitchip-dev/fitchip/discussions) — ideas, Q&A, RFCs
-- 🐦 [X / Twitter](https://twitter.com/fitchip_dev) — build-in-public updates
-- 📺 [YouTube](https://youtube.com/@fitchip) — board-by-board "Can this chip run AI?" series
+- 🗣️ [GitHub Discussions](https://github.com/locnd182644/fitchip/discussions) — ideas, Q&A, RFCs
 
 ## ❓ FAQ
 

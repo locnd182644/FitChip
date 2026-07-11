@@ -14,7 +14,7 @@ The fastest ways to help, in order of impact:
 ## Development setup
 
 ```bash
-git clone https://github.com/fitchip-dev/fitchip && cd fitchip
+git clone https://github.com/locnd182644/fitchip && cd fitchip
 pip install -e ".[dev]"          # light core — no TensorFlow needed
 python -m pytest                 # the whole suite runs in <1s, offline
 ruff check .
