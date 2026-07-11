@@ -93,6 +93,9 @@ class Pipeline:
     ) -> CompileRequest:
         opts = dict(options or {})
         if backend:
+            # Fail here, not deep inside select(): the front-ends only catch
+            # KeyError/ValueError around build_request.
+            self.backends.get(backend)
             opts["backend"] = backend
         return CompileRequest(
             model_path=model_path,
