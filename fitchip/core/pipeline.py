@@ -59,8 +59,8 @@ class Pipeline:
         manifest = candidate.backend.manifest
         with tempfile.TemporaryDirectory(prefix="fitchip-") as tmp:
             workspace = Path(tmp)
-            effective_req = req
             model_path = Path(req.model_path)
+            replacements: dict = {}
 
             # Convert to a format the backend accepts, if needed.
             if req.model_format.value not in manifest.input_formats:
@@ -72,11 +72,13 @@ class Pipeline:
                 except ConversionError as exc:
                     return CompileResult(success=False, error=exc.error)
                 # The backend re-inspects the converted graph itself.
-                effective_req = dataclasses.replace(
-                    req, model_path=str(model_path), model_format=dst
-                )
+                replacements = {"model_path": str(model_path), "model_format": dst}
 
-            effective_req.options.setdefault("out_dir", str(out_dir))
+            # dataclasses.replace() is shallow — copy options so the caller's
+            # request is never mutated (it may be reused with another out_dir).
+            opts = dict(req.options)
+            opts.setdefault("out_dir", str(out_dir))
+            effective_req = dataclasses.replace(req, options=opts, **replacements)
             return candidate.backend.compile(effective_req, str(workspace))
 
     def build_request(
