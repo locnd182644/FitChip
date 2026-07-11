@@ -45,6 +45,13 @@ _pipeline = Pipeline()
 _jobs: dict[str, dict] = {}
 
 
+def _safe_filename(filename: str | None) -> str:
+    """Client-controlled filenames may carry directory components
+    ("../../etc/cron.d/x", "/etc/passwd"); keep only the final name."""
+    name = Path(filename or "model").name
+    return "model" if name in ("", ".", "..") else name
+
+
 @app.get("/v1/health")
 def health() -> dict:
     return {"status": "ok", "version": fitchip.__version__}
@@ -68,7 +75,7 @@ async def inspect(
 ) -> dict:
     """Fast lane: compatibility + memory report, no compilation."""
     with tempfile.TemporaryDirectory(prefix="fitchip-inspect-") as tmp:
-        model_path = Path(tmp) / (model.filename or "model")
+        model_path = Path(tmp) / _safe_filename(model.filename)
         model_path.write_bytes(await model.read())
         try:
             req = _pipeline.build_request(
@@ -92,7 +99,7 @@ async def compile_model(
     job id so clients built against it survive the move to async."""
     job_id = uuid.uuid4().hex
     job_dir = Path(tempfile.mkdtemp(prefix=f"fitchip-job-{job_id}-"))
-    model_path = job_dir / (model.filename or "model")
+    model_path = job_dir / _safe_filename(model.filename)
     model_path.write_bytes(await model.read())
 
     try:
