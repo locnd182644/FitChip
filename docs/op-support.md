@@ -1,15 +1,22 @@
 # Operator Support
 
 The source of truth is machine-readable:
-[`fitchip/backends/tflm/ops_tflm.yaml`](../fitchip/backends/tflm/ops_tflm.yaml)
-— ~95 TFLite builtin ops supported by TFLite Micro, with the esp-nn
-accelerated subset flagged (`esp_nn: true`: CONV_2D, DEPTHWISE_CONV_2D,
-FULLY_CONNECTED, ADD, MUL, pooling, RELU/RELU6/PRELU, SOFTMAX).
+
+- [`fitchip/backends/tflm/ops_tflm.yaml`](../fitchip/backends/tflm/ops_tflm.yaml)
+  — ~95 TFLite builtin ops supported by TFLite Micro, with the esp-nn
+  accelerated subset flagged (`esp_nn: true`: CONV_2D, DEPTHWISE_CONV_2D,
+  FULLY_CONNECTED, ADD, MUL, pooling, RELU/RELU6/PRELU, SOFTMAX).
+- [`fitchip/backends/executorch/ops_executorch.yaml`](../fitchip/backends/executorch/ops_executorch.yaml)
+  — ATen ops for the Cortex-M lane, with the CMSIS-NN accelerated subset
+  flagged (`cmsis_nn: true`). Ops outside this table are **not rejected**:
+  ExecuTorch falls back to its portable reference kernels (correct but
+  slower), so FitChip warns instead of failing.
 
 Check a specific model instead of reading tables:
 
 ```bash
 fitchip inspect model.tflite --target esp32s3
+fitchip inspect model.pt2 --target stm32f746
 ```
 
 ## Verified on real hardware

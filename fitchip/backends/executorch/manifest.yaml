@@ -1,0 +1,16 @@
+id: executorch
+display_name: "ExecuTorch (Cortex-M + CMSIS-NN)"
+docker_image: fitchip/backend-executorch:0.1   # unused in MVP — compile runs in-process
+input_formats: [pte, pt2]
+convertible_from: []                    # ET needs an ExportedProgram; no chain edge feeds it
+output_artifacts: [c_source_project]
+targets:
+  # Vendor-neutral: matched by ISA so future NXP/Nordic Cortex-M boards only
+  # need a target YAML, never a manifest change.
+  - match:
+      has_os: false
+      isa: [cortex-m0plus, cortex-m3, cortex-m4, cortex-m4f, cortex-m7, cortex-m33, cortex-m55]
+quantization: [int8_full, none]
+ops_supported_file: ops_executorch.yaml # op table — updated independently of code
+priority: 90                            # below TFLM (100): TFLM stays default if targets ever overlap
+timeout_s: 600

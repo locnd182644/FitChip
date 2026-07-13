@@ -55,6 +55,13 @@ web = [
     "streamlit>=1.32",
     "requests>=2.31",
 ]
+# PyTorch lane: .pt2 export/PT2E-INT8/lowering + deep .pte inspection.
+# Pinned tightly — the executorch Python API churns between releases; bump
+# together with EXECUTORCH_GIT_TAG in fitchip/backends/executorch/codegen.py.
+executorch = [
+    "torch>=2.5",
+    "executorch>=0.4",
+]
 dev = [
     "pytest>=8.0",
     "pytest-cov>=4.1",
@@ -69,6 +76,7 @@ fitchip = "fitchip.cli.main:cli"
 # entry-point group and shows up automatically.
 [project.entry-points."fitchip.backends"]
 tflm = "fitchip.backends.tflm.adapter:TflmBackend"
+executorch = "fitchip.backends.executorch.adapter:ExecutorchBackend"
 
 [project.urls]
 Homepage = "https://github.com/locnd182644/fitchip"
@@ -80,6 +88,7 @@ include = ["fitchip*"]
 [tool.setuptools.package-data]
 "fitchip.core.targets" = ["*.yaml"]
 "fitchip.backends.tflm" = ["*.yaml", "templates/*", "templates/**/*"]
+"fitchip.backends.executorch" = ["*.yaml", "templates/*", "templates/**/*"]
 "fitchip.samples" = ["*.yaml"]
 
 [tool.pytest.ini_options]

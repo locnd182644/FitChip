@@ -5,7 +5,7 @@ import pytest
 from fitchip.core.cal.backend import TargetProfile
 from fitchip.core.cal.manifest import BackendManifest, load_manifest
 
-TFLM_MANIFEST = Path("fitchip/backends/tflm/manifest.yaml")
+TFLM_MANIFEST = Path(__file__).parent.parent / "fitchip/backends/tflm/manifest.yaml"
 
 
 def _target(**overrides) -> TargetProfile:

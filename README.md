@@ -171,7 +171,7 @@ Design details live in [`docs/architecture.md`](docs/architecture.md). If you wa
 | ESP32 | TFLM + esp-nn | INT8, none | ESP-IDF / PlatformIO project | ✅ Stable |
 | ESP32-S3 | TFLM + esp-nn (SIMD) | INT8, none | ESP-IDF / PlatformIO project | ✅ Stable |
 | ESP32-C3 | TFLM | INT8, none | ESP-IDF / PlatformIO project | 🧪 Beta |
-| Cortex-M (STM32) | ExecuTorch + CMSIS-NN | INT8, none | CMake project | 🚧 In progress |
+| Cortex-M (STM32) | ExecuTorch + CMSIS-NN | INT8, none | CMake project | 🧪 Beta |
 | Linux ARM (Raspberry Pi) | ONNX Runtime | INT8, FP16 | optimized `.onnx` + loader | 🗺️ Planned |
 | Linux ARM / x86 edge | Apache TVM (autotuned) | INT8, FP16 | tuned `.so` + loader | 🗺️ Planned |
 
@@ -194,10 +194,8 @@ FitChip is built for people who are (rightly) paranoid about third parties touch
 
 - [x] TFLM backend · ESP32 / ESP32-S3 · INT8 full-integer PTQ
 - [x] Operator compatibility checker + memory estimator (`fitchip inspect`)
-
-**Now — in progress**
-
-- [ ] ExecuTorch backend — Cortex-M (STM32 + CMSIS-NN); opens the PyTorch → MCU path
+- [x] ExecuTorch backend — Cortex-M (STM32 + CMSIS-NN); opens the PyTorch → MCU path
+      (🧪 beta: install `fitchip[executorch]` for the .pt2 lane; on-device validation ongoing)
 
 **Next — demand-driven, no fixed order.** We only add a backend once the current
 one has real users — maintenance cost is forever. Vote to move these up:

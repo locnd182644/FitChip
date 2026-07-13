@@ -103,10 +103,14 @@ def compile(model, target, quantize, calibration_data, optimize_for, backend, ou
         sys.exit(1)
 
     project = result.artifacts[0]["path"]
-    _ok(f"Project generated       {project}/  (ESP-IDF + PlatformIO)")
-    click.echo()
-    click.echo(f"Next:  cd {project} && idf.py set-target "
-               f"{req.target.id} && idf.py flash monitor")
+    _ok(f"Project generated       {project}/")
+    # Backends know their own toolchain: they put follow-up commands in
+    # report["next_steps"], so this stays backend-agnostic.
+    next_steps = result.report.get("next_steps") or []
+    if next_steps:
+        click.echo()
+        for step in next_steps:
+            click.echo(step)
 
 
 @cli.command()

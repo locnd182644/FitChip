@@ -20,12 +20,19 @@ class BackendRegistry:
         for ep in entry_points(group=ENTRY_POINT_GROUP):
             backend_cls = ep.load()
             self._backends[ep.name] = backend_cls()
-        if not self._backends:
-            # Running from a source checkout without installation: fall back to
-            # the built-in backends so `python -m fitchip` still works.
-            from fitchip.backends.tflm.adapter import TflmBackend
-
-            self._backends["tflm"] = TflmBackend()
+        # Built-ins ship in this same wheel, so make sure they are present even
+        # when the installed entry-point metadata is missing or predates a new
+        # backend (e.g. a stale editable install). Third-party backends still
+        # arrive exclusively through the entry-point group.
+        builtins = {
+            "tflm": "fitchip.backends.tflm.adapter:TflmBackend",
+            "executorch": "fitchip.backends.executorch.adapter:ExecutorchBackend",
+        }
+        for name, ref in builtins.items():
+            if name not in self._backends:
+                module_name, _, class_name = ref.partition(":")
+                module = __import__(module_name, fromlist=[class_name])
+                self._backends[name] = getattr(module, class_name)()
 
     def all(self) -> list[CompilerBackend]:
         return list(self._backends.values())

@@ -24,3 +24,6 @@ out/
 .idea/
 .vscode/
 .DS_Store
+
+# Temporary files
+tmp/

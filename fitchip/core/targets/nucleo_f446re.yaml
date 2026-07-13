@@ -1,0 +1,9 @@
+id: nucleo_f446re
+display_name: "Nucleo-F446RE"
+vendor: st
+isa: cortex-m4f
+ram_kb: 128
+flash_kb: 512
+has_os: false
+accelerators: [cmsis-nn]
+toolchains: [cmake]

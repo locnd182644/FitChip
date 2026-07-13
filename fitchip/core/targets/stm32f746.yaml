@@ -1,0 +1,9 @@
+id: stm32f746
+display_name: "STM32F746"
+vendor: st
+isa: cortex-m7
+ram_kb: 320
+flash_kb: 1024
+has_os: false
+accelerators: [cmsis-nn]
+toolchains: [cmake]

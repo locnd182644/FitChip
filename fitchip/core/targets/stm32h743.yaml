@@ -1,0 +1,9 @@
+id: stm32h743
+display_name: "STM32H743"
+vendor: st
+isa: cortex-m7
+ram_kb: 1024
+flash_kb: 2048
+has_os: false
+accelerators: [cmsis-nn]
+toolchains: [cmake]

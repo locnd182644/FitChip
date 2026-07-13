@@ -75,12 +75,60 @@ def _inspect_pte(path: Path) -> ModelMeta:
             "identifier). Export with executorch's to_executorch() and save "
             "the .pte buffer."
         )
-    return stat_only_meta(
-        path,
-        ModelFormat.PTE,
+    try:
+        return _deep_pte_meta(path)
+    except ImportError:
+        return stat_only_meta(
+            path,
+            ModelFormat.PTE,
+            warnings=[
+                "Deep .pte inspection (op list, planned memory) requires the "
+                f"ExecuTorch backend ({_INSTALL_HINT}); op compatibility is "
+                "checked at compile time.",
+            ],
+        )
+    except Exception as exc:  # deserializer churn must never block the pipeline
+        return stat_only_meta(
+            path,
+            ModelFormat.PTE,
+            warnings=[
+                f"executorch is installed but deep .pte inspection failed ({exc}); "
+                "op compatibility is checked at compile time.",
+            ],
+        )
+
+
+def _deep_pte_meta(path: Path) -> ModelMeta:
+    """Op table + EXACT planned activation bytes from the .pte's baked-in
+    memory plan — the real advantage over heuristic arena estimates. The
+    deserializer is an internal executorch API whose location moved between
+    releases, hence the import fallbacks (isolated here on purpose)."""
+    try:
+        from executorch.exir._serialize import _deserialize_pte_binary
+    except ImportError:
+        from executorch.exir._serialize._program import (  # 0.6+
+            deserialize_pte_binary as _deserialize_pte_binary,
+        )
+
+    program = _deserialize_pte_binary(path.read_bytes())
+    plan = program.execution_plan[0]
+    op_counts: dict[str, int] = {}
+    for op in plan.operators:
+        name = op.name if not getattr(op, "overload", "") else f"{op.name}.{op.overload}"
+        op_counts[name] = op_counts.get(name, 0) + 1
+    planned = sum(size for size in plan.non_const_buffer_sizes if size > 0)
+    return ModelMeta(
+        format=ModelFormat.PTE.value,
+        file_size_bytes=path.stat().st_size,
+        num_ops=sum(op_counts.values()),
+        op_counts=op_counts,
+        inputs=[],
+        outputs=[],
+        weights_bytes=0,  # constants live in the program segment, not reported separately
+        intermediate_peak_bytes=planned,  # exact: memory plan, not a liveness estimate
+        is_quantized=None,
         warnings=[
-            "Deep .pte inspection (op list, planned memory) requires the "
-            f"ExecuTorch backend ({_INSTALL_HINT}); op compatibility is "
-            "checked at compile time.",
+            "Op names are the program's kernel table entries (one count per "
+            "registered kernel, not per call site)."
         ],
     )

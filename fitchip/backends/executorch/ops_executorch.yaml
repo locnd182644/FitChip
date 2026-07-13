@@ -1,0 +1,56 @@
+# Operator support table for the ExecuTorch Cortex-M backend.
+#
+# key      = base ATen op name; the adapter strips the "aten." / "aten::"
+#            prefix, overload suffixes (".default", ".Tensor", ...) and
+#            leading underscores before the lookup, so one entry covers
+#            aten.conv2d.default, aten::conv2d, _softmax.default, etc.
+# cmsis_nn = true when CMSIS-NN ships an optimized INT8 kernel for it
+#            (declared conservatively — see docs/op-support.md)
+# subst    = training-time substitution suggested when an op is NOT listed
+#
+# Unlike the TFLM table, an op missing here is NOT a rejection: ExecuTorch
+# falls back to its portable reference kernels (correct but slower), so the
+# adapter emits a WARNING instead of OP_UNSUPPORTED.
+#
+# This file is data, not code: sync it with new CMSIS-NN/ExecuTorch releases
+# without touching the adapter.
+
+ops:
+  add: {cmsis_nn: true}
+  addmm: {cmsis_nn: true}
+  avg_pool2d: {cmsis_nn: true}
+  adaptive_avg_pool2d: {cmsis_nn: false}
+  batch_norm: {cmsis_nn: false}
+  cat: {cmsis_nn: false}
+  clamp: {cmsis_nn: false}
+  clone: {cmsis_nn: false}
+  conv1d: {cmsis_nn: true}
+  conv2d: {cmsis_nn: true}
+  convolution: {cmsis_nn: true}
+  dropout: {cmsis_nn: false}
+  expand: {cmsis_nn: false}
+  flatten: {cmsis_nn: false}
+  hardtanh: {cmsis_nn: false}
+  linear: {cmsis_nn: true}
+  max_pool2d: {cmsis_nn: true}
+  max_pool2d_with_indices: {cmsis_nn: true}
+  mean: {cmsis_nn: true}
+  mm: {cmsis_nn: true}
+  mul: {cmsis_nn: true}
+  permute: {cmsis_nn: false}
+  permute_copy: {cmsis_nn: false}
+  relu: {cmsis_nn: true}
+  reshape: {cmsis_nn: false}
+  sigmoid: {cmsis_nn: false}
+  slice: {cmsis_nn: false}
+  softmax: {cmsis_nn: true}
+  squeeze: {cmsis_nn: false}
+  tanh: {cmsis_nn: false}
+  unsqueeze: {cmsis_nn: false}
+  view: {cmsis_nn: false}
+  view_copy: {cmsis_nn: false}
+
+substitutions:
+  gelu: "Prefer ReLU/hardswish at training time — GELU only has portable (slow) MCU kernels."
+  layer_norm: "Fold into batch_norm at export time, or accept portable-kernel latency."
+  embedding: "Embedding tables rarely fit MCU flash — distill or hash-trick the vocabulary."

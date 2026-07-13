@@ -240,6 +240,11 @@ class TflmBackend(CompilerBackend):
                 "model_size_bytes": meta.file_size_bytes,
                 "num_ops": meta.num_ops,
                 "quantized": bool(meta.is_quantized),
+                "next_steps": [
+                    f"Next:  cd {project_dir} && idf.py set-target "
+                    f"{req.target.id} && idf.py flash monitor",
+                    "       (PlatformIO users: pio run -t upload)",
+                ],
                 **estimate,
             },
             logs="\n".join(logs),
