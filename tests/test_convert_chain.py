@@ -15,14 +15,14 @@ def test_onnx_to_tflite_is_one_hop():
 def test_unreachable_returns_none():
     chain = ConverterChain()
     assert chain.hops(ModelFormat.TFLITE, ModelFormat.ONNX) is None
-    assert chain.shortest_path(ModelFormat.PYTORCH, ModelFormat.TFLITE) is None
+    assert chain.shortest_path(ModelFormat.CKPT, ModelFormat.TFLITE) is None
 
 
 def test_registered_edge_enables_multi_hop_path():
     chain = ConverterChain()
-    chain.register(ModelFormat.PYTORCH, ModelFormat.ONNX, lambda p, w, r=None: p)
-    path = chain.shortest_path(ModelFormat.PYTORCH, ModelFormat.TFLITE)
+    chain.register(ModelFormat.PTE, ModelFormat.ONNX, lambda p, w, r=None: p)
+    path = chain.shortest_path(ModelFormat.PTE, ModelFormat.TFLITE)
     assert path == [
-        (ModelFormat.PYTORCH, ModelFormat.ONNX),
+        (ModelFormat.PTE, ModelFormat.ONNX),
         (ModelFormat.ONNX, ModelFormat.TFLITE),
     ]

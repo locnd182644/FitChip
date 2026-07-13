@@ -10,23 +10,54 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
+from pathlib import Path
 
 
 class ModelFormat(str, Enum):
     ONNX = "onnx"
     TFLITE = "tflite"
-    PYTORCH = "pt"
+    PYTORCH = "pt"          # TorchScript archive (.pt / .pth)
+    PT2 = "pt2"             # torch.export ExportedProgram archive
+    PTE = "pte"             # ExecuTorch program
+    KERAS = "h5"            # Keras model (.h5 / .hdf5 / .keras)
+    SAVED_MODEL = "pb"      # TF SavedModel dir or frozen GraphDef file
+    CKPT = "ckpt"           # weights-only checkpoint — rejected at inspection
 
     @classmethod
     def from_path(cls, path: str) -> "ModelFormat":
+        p = Path(path)
+        if p.is_dir():
+            if (p / "saved_model.pb").is_file():
+                return cls.SAVED_MODEL
+            raise ValueError(
+                f"'{path}' is a directory but not a TF SavedModel "
+                "(no saved_model.pb inside)."
+            )
         suffix = path.rsplit(".", 1)[-1].lower()
-        for fmt in cls:
-            if fmt.value == suffix:
-                return fmt
-        raise ValueError(
-            f"Cannot infer model format from '{path}'. "
-            f"Supported extensions: {', '.join('.' + f.value for f in cls)}"
-        )
+        fmt = _SUFFIX_TO_FORMAT.get(suffix)
+        if fmt is None:
+            supported = sorted(_SUFFIX_TO_FORMAT)
+            raise ValueError(
+                f"Cannot infer model format from '{path}'. "
+                f"Supported extensions: {', '.join('.' + s for s in supported)}"
+            )
+        return cls(fmt)
+
+
+# Several user-facing extensions map onto one canonical format.
+_SUFFIX_TO_FORMAT = {
+    "onnx": "onnx",
+    "tflite": "tflite",
+    "pt": "pt",
+    "pth": "pt",
+    "pt2": "pt2",
+    "pte": "pte",
+    "h5": "h5",
+    "hdf5": "h5",
+    "keras": "h5",
+    "pb": "pb",
+    "ckpt": "ckpt",
+}
 
 
 class ArtifactKind(str, Enum):

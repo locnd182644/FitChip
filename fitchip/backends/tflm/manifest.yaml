@@ -2,10 +2,12 @@ id: tflm
 display_name: "TensorFlow Lite Micro (+ esp-nn)"
 docker_image: fitchip/backend-tflm:0.1   # unused in MVP — compile runs in-process
 input_formats: [tflite]
-convertible_from: [onnx]                # via the onnx2tf converter edge
+convertible_from: [onnx, h5, pb, pt]    # via the converter-chain edges
 output_artifacts: [c_source_project]
 targets:
-  - match: {has_os: false}              # any bare-metal target
+  # Only Espressif bare-metal chips: the codegen emits ESP-IDF/PlatformIO
+  # projects. Cortex-M boards are served by the ExecuTorch backend.
+  - match: {vendor: espressif, has_os: false}
 quantization: [int8_full, none]
 ops_supported_file: ops_tflm.yaml       # op table — updated independently of code
 priority: 100                           # preferred on MCUs (most stable backend)

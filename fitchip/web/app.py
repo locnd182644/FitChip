@@ -16,6 +16,7 @@ from pathlib import Path
 
 import streamlit as st
 
+from fitchip.core.cal.quant import QUANT_CHOICES, normalize_quantize
 from fitchip.core.pipeline import Pipeline
 
 st.set_page_config(page_title="FitChip", page_icon="✨", layout="centered")
@@ -30,28 +31,29 @@ def get_pipeline() -> Pipeline:
 
 pipeline = get_pipeline()
 
-uploaded = st.file_uploader("Model file", type=["tflite", "onnx"])
+uploaded = st.file_uploader(
+    "Model file", type=["tflite", "onnx", "h5", "hdf5", "keras", "pb", "pt", "pth", "pt2", "pte"]
+)
 col1, col2 = st.columns(2)
 with col1:
     target_id = st.selectbox(
         "Target board", pipeline.targets.ids(), format_func=lambda t: pipeline.targets.get(t).display_name
     )
 with col2:
-    quantize = st.selectbox("Quantization", ["none", "int8"])
+    quantize = st.selectbox("Quantization", QUANT_CHOICES, index=QUANT_CHOICES.index("none"))
 
 if uploaded is not None:
     workdir = Path(tempfile.mkdtemp(prefix="fitchip-web-"))
     model_path = workdir / uploaded.name
     model_path.write_bytes(uploaded.getvalue())
 
-    req = pipeline.build_request(
-        str(model_path), target_id, quantize="int8_full" if quantize == "int8" else None
-    )
-
     # Fast lane: instant feedback before the user commits to compiling.
     try:
+        req = pipeline.build_request(
+            str(model_path), target_id, quantize=normalize_quantize(quantize)
+        )
         meta, selection = pipeline.inspect(req)
-    except ValueError as exc:
+    except (ValueError, KeyError) as exc:
         st.error(str(exc))
         st.stop()
 

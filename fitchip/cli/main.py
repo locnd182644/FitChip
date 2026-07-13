@@ -12,9 +12,8 @@ import click
 
 import fitchip
 from fitchip.core.cal.backend import NormalizedError
+from fitchip.core.cal.quant import QUANT_CHOICES, normalize_quantize
 from fitchip.core.pipeline import Pipeline
-
-_QUANT_ALIASES = {"int8": "int8_full", "int8_full": "int8_full", "none": None}
 
 
 def _ok(msg: str) -> None:
@@ -42,9 +41,9 @@ def cli() -> None:
 
 
 @cli.command()
-@click.argument("model", type=click.Path(exists=True, dir_okay=False))
+@click.argument("model", type=click.Path(exists=True))
 @click.option("--target", "-t", required=True, help="Target board id (see `fitchip targets`).")
-@click.option("--quantize", "-q", type=click.Choice(["int8", "none"]), default="none",
+@click.option("--quantize", "-q", type=click.Choice(QUANT_CHOICES), default="none",
               help="Quantization mode.")
 @click.option("--calibration-data", type=click.Path(exists=True),
               help="Representative input samples (.npy file or directory) for INT8 calibration.")
@@ -59,7 +58,7 @@ def compile(model, target, quantize, calibration_data, optimize_for, backend, ou
         req = pipeline.build_request(
             model_path=model,
             target_id=target,
-            quantize=_QUANT_ALIASES[quantize],
+            quantize=normalize_quantize(quantize),
             calibration_data=calibration_data,
             optimize_for=optimize_for,
             backend=backend,
@@ -68,7 +67,10 @@ def compile(model, target, quantize, calibration_data, optimize_for, backend, ou
         raise click.ClickException(str(exc)) from exc
 
     # Fast lane first: parse + validate + estimate, so failures are cheap.
-    meta, selection = pipeline.inspect(req)
+    try:
+        meta, selection = pipeline.inspect(req)
+    except (ValueError, FileNotFoundError) as exc:
+        raise click.ClickException(str(exc)) from exc
     _ok(f"Model parsed            {meta.num_ops} ops, {_kb(meta.file_size_bytes)}"
         + (" (quantized)" if meta.is_quantized else " (float32)" if meta.is_quantized is False else ""))
 
@@ -108,23 +110,23 @@ def compile(model, target, quantize, calibration_data, optimize_for, backend, ou
 
 
 @cli.command()
-@click.argument("model", type=click.Path(exists=True, dir_okay=False))
+@click.argument("model", type=click.Path(exists=True))
 @click.option("--target", "-t", help="Also check compatibility against this target.")
 def inspect(model, target):
     """Compatibility & memory report for MODEL — no compilation, no hardware needed."""
     pipeline = Pipeline()
-    if target is None:
-        from fitchip.core.inspector import inspect_model
-
-        meta = inspect_model(model)
-        _print_meta(meta)
-        return
-
     try:
+        if target is None:
+            from fitchip.core.inspector import inspect_model
+
+            meta = inspect_model(model)
+            _print_meta(meta)
+            return
+
         req = pipeline.build_request(model_path=model, target_id=target)
-    except (KeyError, ValueError) as exc:
+        meta, selection = pipeline.inspect(req)
+    except (KeyError, ValueError, FileNotFoundError) as exc:
         raise click.ClickException(str(exc)) from exc
-    meta, selection = pipeline.inspect(req)
     _print_meta(meta)
 
     click.echo()

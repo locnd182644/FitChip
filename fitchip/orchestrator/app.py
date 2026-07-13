@@ -30,6 +30,7 @@ except ImportError as exc:  # pragma: no cover
     ) from exc
 
 import fitchip
+from fitchip.core.cal.quant import normalize_quantize
 from fitchip.core.pipeline import Pipeline
 from fitchip.core.selection.engine import SelectionReport
 
@@ -79,7 +80,7 @@ async def inspect(
         model_path.write_bytes(await model.read())
         try:
             req = _pipeline.build_request(
-                str(model_path), target, quantize="int8_full" if quantize == "int8" else None
+                str(model_path), target, quantize=normalize_quantize(quantize)
             )
             meta, selection = _pipeline.inspect(req)
         except (KeyError, ValueError) as exc:
@@ -106,7 +107,7 @@ async def compile_model(
         req = _pipeline.build_request(
             str(model_path),
             target,
-            quantize="int8_full" if quantize == "int8" else None,
+            quantize=normalize_quantize(quantize),
             optimize_for=optimize_for,
             backend=backend,
         )
@@ -114,7 +115,12 @@ async def compile_model(
         shutil.rmtree(job_dir, ignore_errors=True)
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
-    result = _pipeline.compile(req, job_dir / "out")
+    try:
+        result = _pipeline.compile(req, job_dir / "out")
+    except (ValueError, FileNotFoundError) as exc:
+        # e.g. weights-only checkpoints rejected by the inspector
+        shutil.rmtree(job_dir, ignore_errors=True)
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     if not result.success:
         shutil.rmtree(job_dir, ignore_errors=True)
         err = result.error

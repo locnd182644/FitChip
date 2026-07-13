@@ -28,8 +28,17 @@ Converter = Callable[[Path, Path, CompileRequest | None], Path]
 
 class ConverterChain:
     def __init__(self) -> None:
+        # Local imports: the converter modules import ConversionError from
+        # this module, so binding them at instantiation time avoids a cycle.
+        from fitchip.core.convert.tf_convert import keras_to_tflite, saved_model_to_tflite
+        from fitchip.core.convert.torch_convert import torchscript_to_onnx
+
         self._edges: dict[tuple[ModelFormat, ModelFormat], Converter] = {}
         self._edges[(ModelFormat.ONNX, ModelFormat.TFLITE)] = _onnx_to_tflite
+        self._edges[(ModelFormat.KERAS, ModelFormat.TFLITE)] = keras_to_tflite
+        self._edges[(ModelFormat.SAVED_MODEL, ModelFormat.TFLITE)] = saved_model_to_tflite
+        # Opens the 2-hop torchscript -> onnx -> tflite route to MCU backends.
+        self._edges[(ModelFormat.PYTORCH, ModelFormat.ONNX)] = torchscript_to_onnx
 
     def register(self, src: ModelFormat, dst: ModelFormat, converter: Converter) -> None:
         self._edges[(src, dst)] = converter
@@ -101,8 +110,14 @@ def _onnx_to_tflite(model_path: Path, workspace: Path, req: CompileRequest | Non
     want_int8 = bool(req and req.quantization == "int8_full")
     kwargs: dict = {}
     if want_int8:
+        from fitchip.core.convert.calibration import onnx2tf_calibration_arg
+
         kwargs["output_integer_quantized_tflite"] = True
-        calib = _calibration_arg(model_path, req.calibration_data) if req.calibration_data else None
+        calib = (
+            onnx2tf_calibration_arg(model_path, req.calibration_data)
+            if req.calibration_data
+            else None
+        )
         if calib:
             kwargs["custom_input_op_name_np_data_path"] = calib
     try:
@@ -146,26 +161,3 @@ def _onnx_to_tflite(model_path: Path, workspace: Path, req: CompileRequest | Non
     )
 
 
-def _calibration_arg(model_path: Path, calibration_data: str) -> list | None:
-    """Build onnx2tf's [[input_name, npy_path, mean, std], ...] argument from
-    a .npy file (or a directory containing one) of representative samples.
-    Returns None when nothing usable is found — onnx2tf then falls back to its
-    built-in random calibration (accuracy warning is raised upstream)."""
-    calib_path = Path(calibration_data)
-    if calib_path.is_dir():
-        npys = sorted(calib_path.glob("*.npy"))
-        if not npys:
-            return None
-        calib_path = npys[0]
-    if calib_path.suffix != ".npy":
-        return None
-
-    import onnx
-
-    graph = onnx.load(str(model_path)).graph
-    initializers = {init.name for init in graph.initializer}
-    input_names = [vi.name for vi in graph.input if vi.name not in initializers]
-    if not input_names:
-        return None
-    # mean=0, std=1: samples are expected to be already preprocessed.
-    return [[input_names[0], str(calib_path), 0.0, 1.0]]

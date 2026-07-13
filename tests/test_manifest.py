@@ -11,7 +11,7 @@ TFLM_MANIFEST = Path("fitchip/backends/tflm/manifest.yaml")
 def _target(**overrides) -> TargetProfile:
     base = dict(
         id="t", display_name="T", isa="xtensa-lx7", ram_kb=512,
-        flash_kb=4096, has_os=False,
+        flash_kb=4096, has_os=False, vendor="espressif",
     )
     base.update(overrides)
     return TargetProfile(**base)
@@ -24,10 +24,15 @@ def test_tflm_manifest_loads():
     assert m.priority == 100
 
 
-def test_target_match_bare_metal():
+def test_target_match_espressif_bare_metal_only():
+    # Regression: TFLM's codegen only knows ESP-IDF, so its manifest must
+    # not claim every bare-metal board — an STM32 (vendor: st) would be
+    # selected and then fail INTERNAL at codegen.
     m = load_manifest(TFLM_MANIFEST)
-    assert m.matches_target(_target(has_os=False))
+    assert m.matches_target(_target())
     assert not m.matches_target(_target(has_os=True))
+    assert not m.matches_target(_target(vendor="st", isa="cortex-m7"))
+    assert not m.matches_target(_target(vendor=""))
 
 
 def test_target_match_list_means_any_of():

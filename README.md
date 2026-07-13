@@ -137,7 +137,7 @@ fitchip compile model.onnx --target esp32 --quantize int8 \
 FitChip is an orchestrator, not another compiler. Every supported compiler lives behind the **Compiler Abstraction Layer (CAL)** — a single contract (`capabilities / validate / compile / estimate`) — and every supported board is a data file, not code.
 
 ```text
- model.tflite / model.onnx
+ model.tflite / model.onnx / model.h5 / ... (multi format)
         │
         ▼
  ┌──────────────────┐     ┌───────────────────┐
