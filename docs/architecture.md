@@ -63,15 +63,27 @@ AI-assisted error diagnosis.
 
 ## Execution: MVP vs. wave 2
 
-The MVP runs the TFLM backend **in-process and synchronously** — it is pure
-Python + codegen, needs no isolation. The interface is already shaped for
-what comes with the second backend (TVM):
+The MVP runs backends **in-process** — TFLM and ExecuTorch are pure
+Python + codegen, need no isolation. The seams for wave 2 are already in
+place, so the switch is an adapter swap, not a rewrite:
 
+- **`JobRunner`** (`fitchip/orchestrator/jobs.py`) — the execution seam.
+  Endpoints hand compile work to a runner; the MVP `InProcessRunner` uses a
+  single worker thread (so compiles never block the event loop and the
+  `/v1/inspect` fast lane stays fast) and expires finished jobs after a TTL.
+  Wave 2 implements the same protocol on Celery + Redis — endpoints stay
+  unchanged.
 - each backend gets its own Docker image (declared as `docker_image` in the
   manifest, currently unused),
-- `compile` jobs move behind Celery + Redis (TVM autotuning runs for hours),
-- the orchestrator's `/v1/compile` already returns a `job_id` so clients
-  survive the switch to async unchanged.
+- the orchestrator's `/v1/compile` already returns a `job_id` and clients
+  can already poll `/v1/jobs/{id}`, so they survive the switch to async
+  (202 + poll) unchanged.
 
-The rule: infrastructure is added when the backend that needs it lands, not
-before.
+The rule: infrastructure is added when the need lands, not before.
+Concretely:
+
+| Infrastructure | Add it when | Not when |
+|---|---|---|
+| Celery + Redis | a backend compiles for >~15 min **locally inside the orchestrator** (e.g. TVM autotuning) | the TVM adapter lands but heavy autotuning runs in FitChip Cloud |
+| Docker per backend | a hosted service accepts models from strangers (sandboxing untrusted uploads), **or** two backends have unresolvable dependency conflicts | a backend merely being "big" |
+| Cheaper middle step | dependency conflicts alone → try per-backend subprocess + venv before reaching for Docker | |

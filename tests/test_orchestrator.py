@@ -62,3 +62,41 @@ def test_compile_unknown_target_is_422(client, tiny_tflite):
         data={"target": "nope"},
     )
     assert resp.status_code == 422
+
+
+def test_job_status_after_compile(client, tiny_tflite):
+    resp = client.post(
+        "/v1/compile",
+        files={"model": ("tiny.tflite", tiny_tflite.read_bytes())},
+        data={"target": "esp32s3"},
+    )
+    assert resp.status_code == 200, resp.text
+    job_id = resp.json()["job_id"]
+
+    status = client.get(f"/v1/jobs/{job_id}")
+    assert status.status_code == 200
+    body = status.json()
+    assert body["status"] == "done"
+    assert body["report"] == resp.json()["report"]
+    assert body["artifact_url"] == f"/v1/jobs/{job_id}/artifact"
+
+
+def test_unknown_job_is_404(client):
+    assert client.get("/v1/jobs/deadbeef").status_code == 404
+    assert client.get("/v1/jobs/deadbeef/artifact").status_code == 404
+
+
+def test_health_responds_while_compile_runs(client, tiny_tflite):
+    """The compile endpoint must not block the event loop (fast lane stays fast)."""
+    import concurrent.futures
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+        compiling = pool.submit(
+            client.post,
+            "/v1/compile",
+            files={"model": ("tiny.tflite", tiny_tflite.read_bytes())},
+            data={"target": "esp32s3"},
+        )
+        health = pool.submit(client.get, "/v1/health")
+        assert health.result(timeout=30).status_code == 200
+        assert compiling.result(timeout=120).status_code == 200

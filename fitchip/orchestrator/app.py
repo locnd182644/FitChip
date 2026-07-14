@@ -4,10 +4,15 @@ Two lanes, per the architecture doc:
 
 - fast lane  (sync):  /v1/inspect — parse + validate + estimate, a few hundred
   ms, so a GUI can react before the user hits "compile".
-- slow lane:          /v1/compile — runs the real compilation. MVP executes
-  in-process and synchronously; wave 2 (together with the TVM backend) moves
-  this behind Celery+Redis and into per-backend ephemeral Docker containers.
-  The API shape (job id in the response) is already async-friendly.
+- slow lane:          /v1/compile — runs the real compilation through a
+  JobRunner (see jobs.py). MVP: InProcessRunner, one worker thread, and the
+  endpoint waits so the response still carries the report inline. Wave 2
+  (together with the TVM backend) swaps in a Celery-backed runner and returns
+  202 + job id instead — clients already poll /v1/jobs/{id}, so they survive
+  the switch unchanged.
+
+All endpoints are plain `def`: FastAPI runs them on its threadpool, so a
+minutes-long compile never blocks the event loop (or /v1/health).
 
 Run:  uvicorn fitchip.orchestrator.app:app --reload      (pip install 'fitchip[server]')
 """
@@ -17,7 +22,6 @@ from __future__ import annotations
 import dataclasses
 import shutil
 import tempfile
-import uuid
 import zipfile
 from pathlib import Path
 
@@ -33,6 +37,7 @@ import fitchip
 from fitchip.core.cal.quant import normalize_quantize
 from fitchip.core.pipeline import Pipeline
 from fitchip.core.selection.engine import SelectionReport
+from fitchip.orchestrator.jobs import InProcessRunner, JobFailure, JobStatus
 
 app = FastAPI(
     title="FitChip Orchestrator",
@@ -41,9 +46,7 @@ app = FastAPI(
 )
 
 _pipeline = Pipeline()
-# MVP job store: compiled artifacts kept on disk until the process exits.
-# Wave 2 replaces this with the Celery result backend.
-_jobs: dict[str, dict] = {}
+_runner = InProcessRunner()
 
 
 def _safe_filename(filename: str | None) -> str:
@@ -69,7 +72,7 @@ def backends() -> list[dict]:
 
 
 @app.post("/v1/inspect")
-async def inspect(
+def inspect(
     model: UploadFile = File(...),
     target: str = Form(...),
     quantize: str | None = Form(None),
@@ -77,7 +80,7 @@ async def inspect(
     """Fast lane: compatibility + memory report, no compilation."""
     with tempfile.TemporaryDirectory(prefix="fitchip-inspect-") as tmp:
         model_path = Path(tmp) / _safe_filename(model.filename)
-        model_path.write_bytes(await model.read())
+        model_path.write_bytes(model.file.read())
         try:
             req = _pipeline.build_request(
                 str(model_path), target, quantize=normalize_quantize(quantize)
@@ -89,19 +92,18 @@ async def inspect(
 
 
 @app.post("/v1/compile")
-async def compile_model(
+def compile_model(
     model: UploadFile = File(...),
     target: str = Form(...),
     quantize: str | None = Form(None),
     optimize_for: str = Form("size"),
     backend: str | None = Form(None),
 ) -> dict:
-    """Slow lane. Synchronous in the MVP; the response already carries a
-    job id so clients built against it survive the move to async."""
-    job_id = uuid.uuid4().hex
-    job_dir = Path(tempfile.mkdtemp(prefix=f"fitchip-job-{job_id}-"))
+    """Slow lane. The MVP waits for the job so the report comes back inline;
+    wave 2 returns 202 here and lets clients poll /v1/jobs/{id}."""
+    job_dir = Path(tempfile.mkdtemp(prefix="fitchip-job-"))
     model_path = job_dir / _safe_filename(model.filename)
-    model_path.write_bytes(await model.read())
+    model_path.write_bytes(model.file.read())
 
     try:
         req = _pipeline.build_request(
@@ -115,47 +117,59 @@ async def compile_model(
         shutil.rmtree(job_dir, ignore_errors=True)
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
-    try:
-        result = _pipeline.compile(req, job_dir / "out")
-    except (ValueError, FileNotFoundError) as exc:
-        # e.g. weights-only checkpoints rejected by the inspector
-        shutil.rmtree(job_dir, ignore_errors=True)
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-    if not result.success:
-        shutil.rmtree(job_dir, ignore_errors=True)
-        err = result.error
-        raise HTTPException(
-            status_code=422,
-            detail={"code": err.code, "message": err.message, "hints": err.hints},
-        )
+    def work() -> tuple[dict, Path]:
+        try:
+            result = _pipeline.compile(req, job_dir / "out")
+        except (ValueError, FileNotFoundError) as exc:
+            # e.g. weights-only checkpoints rejected by the inspector
+            raise JobFailure(str(exc)) from exc
+        if not result.success:
+            err = result.error
+            raise JobFailure(
+                {"code": err.code, "message": err.message, "hints": err.hints}
+            )
+        project_dir = Path(result.artifacts[0]["path"])
+        zip_path = job_dir / f"{project_dir.name}.zip"
+        _zip_dir(project_dir, zip_path)
+        return result.report, zip_path
 
-    project_dir = Path(result.artifacts[0]["path"])
-    zip_path = job_dir / f"{project_dir.name}.zip"
-    _zip_dir(project_dir, zip_path)
-    _jobs[job_id] = {"zip": zip_path, "report": result.report}
+    job = _runner.submit(job_dir, work)
+    job = _runner.wait(job.id)
+    if job.status is JobStatus.FAILED:
+        raise HTTPException(status_code=422, detail=job.error)
 
     return {
-        "job_id": job_id,
-        "status": "done",
-        "report": result.report,
-        "artifact_url": f"/v1/jobs/{job_id}/artifact",
+        "job_id": job.id,
+        "status": job.status.value,
+        "report": job.report,
+        "artifact_url": f"/v1/jobs/{job.id}/artifact",
     }
 
 
 @app.get("/v1/jobs/{job_id}")
 def job_status(job_id: str) -> dict:
-    job = _jobs.get(job_id)
+    job = _runner.get(job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Unknown job id")
-    return {"job_id": job_id, "status": "done", "report": job["report"]}
+    body: dict = {"job_id": job.id, "status": job.status.value}
+    if job.status is JobStatus.DONE:
+        body["report"] = job.report
+        body["artifact_url"] = f"/v1/jobs/{job.id}/artifact"
+    elif job.status is JobStatus.FAILED:
+        body["error"] = job.error
+    return body
 
 
 @app.get("/v1/jobs/{job_id}/artifact")
 def job_artifact(job_id: str) -> FileResponse:
-    job = _jobs.get(job_id)
+    job = _runner.get(job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Unknown job id")
-    return FileResponse(job["zip"], filename=Path(job["zip"]).name)
+    if job.status is not JobStatus.DONE or job.zip_path is None:
+        raise HTTPException(
+            status_code=409, detail=f"Job is {job.status.value}, no artifact available"
+        )
+    return FileResponse(job.zip_path, filename=job.zip_path.name)
 
 
 def _selection_dict(selection: SelectionReport) -> dict:
