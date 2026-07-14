@@ -26,6 +26,12 @@ def _warn(msg: str) -> None:
 
 def _fail(err: NormalizedError) -> None:
     click.echo(click.style(f"✘ [{err.code}] ", fg="red") + err.message, err=True)
+    if err.raw:
+        # The normalized message says what failed; the raw compiler/framework
+        # error says why — honest errors beat tidy ones (cap it for sanity).
+        raw = err.raw if len(err.raw) <= 2000 else err.raw[:2000] + " […]"
+        for line in raw.splitlines():
+            click.echo(click.style("  │ ", fg="red") + line, err=True)
     for hint in err.hints:
         click.echo(click.style("  ↪ ", fg="cyan") + hint, err=True)
 

@@ -73,3 +73,31 @@ def test_cli_targets_and_backends():
     runner = CliRunner()
     assert "esp32s3" in runner.invoke(cli, ["targets"]).output
     assert "tflm" in runner.invoke(cli, ["backends"]).output
+
+
+def test_fail_prints_raw_compiler_error(capsys):
+    # Regression: CONVERT_FAIL used to hide the underlying framework error
+    # (e.g. Keras 3's "Unknown layer: 'TFOpLambda'"), leaving users blind.
+    from fitchip.cli.main import _fail
+    from fitchip.core.cal.backend import NormalizedError
+
+    _fail(NormalizedError(
+        code="CONVERT_FAIL",
+        message="keras -> tflite conversion failed for 'm.h5'.",
+        raw="Unknown layer: 'TFOpLambda'. Please ensure ...",
+        hints=["Run `fitchip inspect` first."],
+    ))
+    err = capsys.readouterr().err
+    assert "CONVERT_FAIL" in err
+    assert "TFOpLambda" in err          # the raw cause is visible
+    assert "fitchip inspect" in err
+
+
+def test_fail_truncates_huge_raw_logs(capsys):
+    from fitchip.cli.main import _fail
+    from fitchip.core.cal.backend import NormalizedError
+
+    _fail(NormalizedError(code="CONVERT_FAIL", message="x", raw="y" * 10_000))
+    err = capsys.readouterr().err
+    assert "[…]" in err
+    assert len(err) < 5_000
