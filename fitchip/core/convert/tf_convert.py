@@ -22,7 +22,7 @@ def keras_to_tflite(model_path: Path, workspace: Path, req: CompileRequest | Non
     from fitchip.core.convert.chain import ConversionError
 
     try:
-        model = tf.keras.models.load_model(str(model_path), compile=False)
+        model = _load_keras_model(tf, model_path)
         converter = tf.lite.TFLiteConverter.from_keras_model(model)
         input_shapes = [list(t.shape) for t in model.inputs]
         _apply_quantization(tf, converter, req, input_shapes)
@@ -39,10 +39,36 @@ def keras_to_tflite(model_path: Path, workspace: Path, req: CompileRequest | Non
                     "Run `fitchip inspect` to check the layer list first.",
                     "Custom layers need a concrete implementation at load time "
                     "(tf.keras.utils.custom_object_scope).",
+                    "Legacy Keras-2 archives (TFOpLambda layers...) need the "
+                    "tf-keras package — it ships with 'fitchip[quantize]'.",
                 ],
             )
         ) from exc
     return _write(workspace, model_path.stem, tflite_bytes)
+
+
+def _load_keras_model(tf, model_path: Path):
+    """tf.keras first; legacy Keras-2 archives fall back to tf_keras.
+
+    Since TF 2.16, `tf.keras` is Keras 3, which cannot deserialize
+    Keras-2-era layers such as TFOpLambda (emitted whenever a model used a
+    raw TF op like tf.nn.softmax). tf_keras is the maintained Keras-2
+    runtime — the `quantize` extra ships it for exactly this case — and
+    TFLiteConverter.from_keras_model accepts its models unchanged. The
+    fallback keeps the result deterministic: without it, loading succeeds
+    or fails depending on whether something else in the process (e.g.
+    onnx2tf) already flipped TF_USE_LEGACY_KERAS."""
+    try:
+        return tf.keras.models.load_model(str(model_path), compile=False)
+    except Exception as exc:
+        try:
+            import tf_keras
+        except ImportError:
+            raise exc from None
+        try:
+            return tf_keras.models.load_model(str(model_path), compile=False)
+        except Exception:
+            raise exc from None  # surface the original, clearer error
 
 
 def saved_model_to_tflite(
